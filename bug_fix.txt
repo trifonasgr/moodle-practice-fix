@@ -1,0 +1,36 @@
+// index.php (διορθωμένος κώδικας)
+require_once('../../config.php');
+
+$insertrecord = new stdClass();
+$insertrecord->firstname = $fromform->firstname;
+$insertrecord->lastname = $fromform->lastname;
+$insertrecord->email = $fromform->email;
+$insertrecord->timecreated = time();
+$insertrecord->timemodified = time(); // Προσθήκη του timemodified
+
+$DB->insert_record('local_practice', $insertrecord);
+redirect(new moodle_url('/local/practice/'));
+
+// main.php - Διόρθωση επιστροφής δεδομένων
+$data[] = array(
+    'firstname' => $record->firstname,
+    'lastname' => $record->lastname,
+    'email' => $record->email,
+    'timecreated' => $record->timecreated
+);
+
+// main.mustache - Διόρθωση εμφάνισης lastname
+<tr>
+    <td>{{firstname}}</td>
+    <td>{{lastname}}</td> <!-- Αλλαγή από firstname σε lastname -->
+    <td>{{email}}</td>
+    <td>{{timecreated}}</td>
+</tr>
+
+// index.php - Υποχρεωτικά πεδία και έλεγχος email
+if (empty($fromform->firstname) || empty($fromform->lastname) || empty($fromform->email)) {
+    print_error('Όλα τα πεδία είναι υποχρεωτικά.');
+}
+if (!filter_var($fromform->email, FILTER_VALIDATE_EMAIL)) {
+    print_error('Παρακαλώ εισάγετε έγκυρο email.');
+}

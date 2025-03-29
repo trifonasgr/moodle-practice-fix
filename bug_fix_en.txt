@@ -1,0 +1,116 @@
+Step 1: Install Moodle on a Windows computer
+- from the Module Practice files we check the version.php file where we can see the version of Moodle that the Module is running 
+• Plugin version: 2023051200
+• Requires Moodle version: 3.7 (2019051700) or newer
+• Component: local_practice
+• Status: Stable
+• Release: 1
+For a Windows computer we download LMS4 from the official Moodle site and install it on our computer
+
+Step 2: Installing Practice Module in Moodle
+- Log in to the admin panel at https://localhost/admin/ 
+- From the horizontal menu, select Plugins  Install plugins
+- In the ZIP package, select the Practice.zip file and upload it to the server
+- Click on install plugin from the ZIP file
+- Click on Continue in the Debugging output
+- Click Continue in Server checks.
+(If it passes all the checks, the message Your server environment meets all minimum requirements is displayed.)
+- Click Update Moodle Database to update the Moodle database
+- Upgrading to new version: Click Continue to complete the process
+From the menu go to plugins -> Plugins overview to see if the Practice module is installed
+
+Step 3: Check Frontend Form
+- from the address https://localhost/local/practice/ we see the form
+
+Step4: Errors & Fixes
+
+1. "Error writing to database" error
+Cause: Timemodified did not have a default value.
+Fix:
+Open local/practice/index.php
+Add:
+$insertrecord->timemodified = time();
+
+2. Incorrectly storing Lastname
+Cause: In line 44 of index.php, lastname was taking the value of firstname.
+Fix:
+Replace
+$insertrecord->lastname = $fromform->firstname;
+with
+$insertrecord->lastname = $fromform->lastname;
+
+3. Fix main.mustache
+Cause: In line 14 of templates/main.mustache, firstname appeared twice.
+Fix:
+Changed the second firstname to lastname.
+
+4. timecreated is not displayed
+Reason: Timecreated was not returned from the database.
+Fix:
+Open ./classes/output/main.php
+Change line 55:
+$data[]=array('firstname'=>$record->firstname,'lastname'=>$record->lastname,'email'=>$record->email);
+to:
+$data[]=array('firstname'=>$record->firstname,'lastname'=>$record->lastname,'email'=>$record->email,'timecreated'=>$timecreated);
+
+5. Required Fields & Email Check
+Changes:
+All fields (firstname, lastname, email) made mandatory.
+Added check for valid email address.
+If a field is missing, it is highlighted in red.
+Fix:
+Replace code with the following from line 38 and below in index.php
+
+if ($fromform = $mform->get_data()) {
+    $errors = []; // Stores which fields have a problem
+    
+    // Check for empty fields
+    if (empty($fromform->firstname)) {
+        $errors['firstname'] = 'Name is required';
+    }
+    if (empty($fromform->lastname)) {
+        $errors['lastname'] = 'Last name is required';
+    }
+    if (empty($fromform->email)) {
+        $errors['email'] = 'Email is required';
+    } elseif (!filter_var($fromform->email, FILTER_VALIDATE_EMAIL)) {
+        $errors['email'] = 'The email you entered is not valid.';
+    }
+
+    // If there are errors, we display messages and color fields
+    if (!empty($errors)) {
+        foreach ($errors as $field => $message) {
+            echo "<script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var field = document.querySelector('[name=\"$field\"]');
+                    if (field) {
+                        field.style.border = '2px solid red'; 
+                        field.setAttribute('placeholder', '$message'); 
+                    }
+                });
+            </script>";
+        }
+        $mform->set_data($fromform); // Restores previous data
+    } 
+    // If everything is correct, it saves to the database
+    else {
+        $insertrecord = new stdClass();
+        $insertrecord->firstname = $fromform->firstname;
+        $insertrecord->lastname = $fromform->lastname;
+        $insertrecord->email = $fromform->email;
+        $insertrecord->timecreated = time() - 86400;
+        $insertrecord->timemodified = time();
+
+        $DB->insert_record('local_practice', $insertrecord);
+        redirect(new moodle_url('/local/practice/index.php'));
+    }
+}
+
+$indexview=new main();
+echo $OUTPUT->header();
+echo $OUTPUT->render($indexview);
+$mform->display();
+echo $OUTPUT->footer();
+
+
+
